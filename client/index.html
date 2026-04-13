@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neighborhood Library</title>
+
+  <!-- Leaflet for the map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <!-- ── Navigation (hidden until signed in) ──────────────────────────── -->
+  <nav id="nav" class="hidden">
+    <div class="nav-brand">📚 Neighborhood Library</div>
+    <div class="nav-links">
+      <button class="nav-btn active" data-target="library">My Library</button>
+      <button class="nav-btn" data-target="map">Nearby</button>
+      <button class="nav-btn" data-target="profile">Profile</button>
+      <button id="signout-btn" class="nav-btn signout">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- ── Toast notification ───────────────────────────────────────────── -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- AUTH VIEW                                                          -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div id="auth-view" class="view">
+    <div class="auth-card">
+      <h1>📚 Neighborhood Library</h1>
+      <p class="tagline">Share your shelves with readers nearby</p>
+
+      <!-- Shown when arriving via an invite link -->
+      <div id="invite-notice" class="invite-notice hidden">
+        <p>📬 You've been invited to connect on Neighborhood Library!</p>
+        <p>Neighborhood Library lets you find readers near you, see what people are reading, and connect directly — sharing contact details like a phone number or Telegram so you can talk about books together. Sign in or create a free account to view your invitation.</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="tab-btn active" data-tab="signin">Sign In</button>
+        <button class="tab-btn" data-tab="signup">Sign Up</button>
+      </div>
+
+      <!-- Sign In -->
+      <form id="signin-form" class="auth-form">
+        <input type="email"    name="email"    placeholder="Email"    required />
+        <input type="password" name="password" placeholder="Password" required />
+        <button type="submit" class="btn-primary">Sign In</button>
+        <p id="signin-error" class="form-error hidden"></p>
+      </form>
+
+      <!-- Sign Up -->
+      <form id="signup-form" class="auth-form hidden">
+        <input type="text"     name="username" placeholder="Username"        required />
+        <input type="email"    name="email"    placeholder="Email"           required />
+        <input type="password" name="password" placeholder="Password (6+ chars)" required />
+        <button type="submit" class="btn-primary">Create Account</button>
+        <p id="signup-error" class="form-error hidden"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- LIBRARY VIEW                                                       -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div id="library-view" class="view hidden">
+    <div class="view-header">
+      <h2>My Library</h2>
+      <div class="header-actions">
+        <button id="invite-btn" class="btn-secondary">✉️ Connect with Someone</button>
+        <button id="add-book-btn" class="btn-secondary">+ Add Book</button>
+      </div>
+    </div>
+
+    <!-- Shared libraries -->
+    <div id="shared-libraries-section" class="shared-libraries-section hidden">
+      <h3>🤝 Your Connections</h3>
+      <div id="shared-libraries-list" class="shared-libraries-list"></div>
+    </div>
+
+    <!-- Missing author section -->
+    <div id="missing-authors-section" class="missing-authors-section hidden">
+      <div class="missing-authors-header">
+        <span>⚠️ Missing Author — <span id="missing-authors-count"></span></span>
+      </div>
+      <div id="missing-authors-list" class="missing-authors-list"></div>
+    </div>
+
+    <!-- Pending invites inbox -->
+    <div id="invites-inbox" class="invites-inbox hidden">
+      <div class="inbox-header">
+        <span>✉️ Invites <span id="inbox-count" class="inbox-badge"></span></span>
+        <button id="inbox-toggle-btn" class="btn-ghost inbox-toggle">Show</button>
+      </div>
+      <div id="inbox-list" class="inbox-list hidden"></div>
+    </div>
+
+    <!-- Scan section -->
+    <div class="scan-section">
+      <h3>📷 Upload a picture of the books in your library and have them automatically added:</h3>
+      <div id="drop-zone" class="drop-zone">
+        <p>Drop a photo here or <label for="file-input" class="file-label">browse</label></p>
+        <input type="file" id="file-input" accept="image/*" class="hidden" />
+        <img id="preview-img" class="preview-img hidden" alt="Preview" />
+      </div>
+      <button id="scan-btn" class="btn-primary hidden">🔍 Scan with AI</button>
+      <div id="scan-status" class="scan-status hidden"></div>
+    </div>
+
+    <!-- Add book manually -->
+    <div id="add-book-form" class="add-book-form hidden">
+      <h3>Add a Book Manually</h3>
+      <input type="text" id="new-title"  placeholder="Title *" />
+      <input type="text" id="new-author" placeholder="Author" />
+      <div class="form-actions">
+        <button id="save-book-btn"   class="btn-primary">Add to Library</button>
+        <button id="cancel-book-btn" class="btn-ghost">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="reading">Currently Reading</button>
+      <button class="filter-btn" data-filter="available">Available</button>
+      <button class="filter-btn" data-filter="unavailable">Unavailable</button>
+    </div>
+
+    <!-- Book grid -->
+    <div id="book-grid" class="book-grid">
+      <p class="empty-state">No books yet — scan a photo or add one manually!</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- MAP VIEW                                                           -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div id="map-view" class="view hidden">
+    <div class="map-sidebar">
+
+      <!-- ── Nearby list ── -->
+      <div id="nearby-list-panel">
+        <h3>Nearby Readers</h3>
+        <div class="radius-control">
+          <label for="radius-input">Radius: <span id="radius-label">25</span> km</label>
+          <input type="range" id="radius-input" min="5" max="100" value="25" step="5" />
+        </div>
+        <div id="nearby-list" class="nearby-list">
+          <p class="empty-state">Allow location access to find nearby readers.</p>
+        </div>
+      </div>
+
+      <!-- ── User detail panel (shown when a user is selected) ── -->
+      <div id="user-detail-panel" class="hidden">
+        <button id="back-to-nearby-btn" class="btn-ghost back-btn-sm">← Back</button>
+
+        <div class="detail-header">
+          <div id="detail-username" class="detail-name"></div>
+          <div id="detail-bio" class="detail-bio"></div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Currently Reading</h4>
+          <div id="detail-reading-list" class="detail-reading-list">
+            <p class="empty-state">Nothing marked as currently reading.</p>
+          </div>
+        </div>
+
+        <div class="detail-actions">
+          <button id="detail-view-library-btn" class="btn-secondary">📚 Full Library</button>
+          <button id="detail-invite-btn" class="btn-secondary">✉️ Connect</button>
+        </div>
+
+        <!-- Inline invite form -->
+        <div id="detail-invite-form" class="detail-invite-form hidden">
+          <p class="invite-form-label">Send a connection request to <strong id="detail-invite-target"></strong> — if they accept, you'll both be able to share contact details like a phone number or Telegram to talk about books.</p>
+          <textarea id="detail-invite-message"
+                    placeholder="Add a message… (optional, max 500 chars)"
+                    maxlength="500"
+                    rows="4"></textarea>
+          <div class="form-actions">
+            <button id="detail-send-invite-btn" class="btn-primary">Send Invite</button>
+            <button id="detail-cancel-invite-btn" class="btn-ghost">Cancel</button>
+          </div>
+          <div id="detail-invite-result" class="detail-invite-result hidden"></div>
+        </div>
+      </div>
+
+    </div>
+    <div id="map-container"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- PROFILE VIEW                                                       -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div id="profile-view" class="view hidden">
+    <div class="profile-card">
+      <h2>Profile &amp; Settings</h2>
+      <form id="profile-form">
+        <label>
+          Email (Only you can see this)
+          <input type="email" name="email" disabled />
+        </label>
+        <label>
+          Username
+          <input type="text" name="username" placeholder="Username" required />
+        </label>
+        <label>
+          Bio
+          <textarea name="bio" rows="3" placeholder="Tell readers a bit about yourself…"></textarea>
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" name="is_public" id="public-toggle" />
+          <span>Public profile — appear on the Nearby map</span>
+        </label>
+
+        <div class="contact-section">
+          <h4 class="contact-heading">Contact (shown only to people you're connected with)</h4>
+          <label>
+            Phone number
+            <input type="tel" name="phone" placeholder="+1 555 000 0000" />
+          </label>
+          <label class="toggle-label">
+            <input type="checkbox" name="phone_public" />
+            <span>Show my phone number to library connections</span>
+          </label>
+
+          <label>
+            Telegram username
+            <input type="text" name="telegram_username" placeholder="@username" />
+          </label>
+          <label class="toggle-label">
+            <input type="checkbox" name="telegram_public" />
+            <span>Show my Telegram to library connections</span>
+          </label>
+        </div>
+
+        <button type="button" id="share-location-btn" class="btn-secondary">
+          📍 Update My Location
+        </button>
+        <p id="location-status" class="location-status"></p>
+        <button type="submit" class="btn-primary">Save Profile</button>
+        <p id="profile-error" class="form-error hidden"></p>
+      </form>
+
+      <!-- Sent invites -->
+      <div class="invites-section">
+        <h3>Sent Connection Requests</h3>
+        <div id="invites-list" class="invites-list">
+          <p class="empty-state">No invites sent yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- USER LIBRARY VIEW (read-only, for viewing another user)           -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div id="user-library-view" class="view hidden">
+    <div class="view-header">
+      <button id="back-btn" class="btn-ghost">← Back to Map</button>
+      <h2 id="user-library-title">Loading…</h2>
+    </div>
+    <div id="user-book-grid" class="book-grid"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- INVITE MODAL                                                       -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div id="invite-modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3>Connect with a Reader</h3>
+
+      <div class="modal-share-section">
+        <p class="modal-share-label">Friend not on Neighborhood Library yet? Copy a message to tell them about it:</p>
+        <button id="copy-site-info-btn" class="btn-secondary">📋 Invite a friend not yet on Neighborhood Library</button>
+      </div>
+
+      <div class="modal-divider"></div>
+
+      <p class="modal-subtitle">Already on Neighborhood Library? Send them a connection request — once accepted, you'll both be able to share contact details and talk about books together.</p>
+      <input type="text" id="invite-username" placeholder="Their username" autocomplete="off" />
+      <textarea id="invite-message"
+                placeholder="Add a message… (optional, max 500 chars)"
+                maxlength="500"
+                rows="3"></textarea>
+      <div class="form-actions">
+        <button id="send-invite-btn"   class="btn-primary">Send Request</button>
+        <button id="cancel-invite-btn" class="btn-ghost">Cancel</button>
+      </div>
+      <div id="invite-result" class="invite-result hidden"></div>
+    </div>
+  </div>
+
+  <!-- JS modules (order matters for globals) -->
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/library.js"></script>
+  <script src="/js/map.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

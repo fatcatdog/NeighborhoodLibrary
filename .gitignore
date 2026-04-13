@@ -1,0 +1,11 @@
+# Environment variables
+.env
+
+# Database
+data/
+
+# Dependencies
+node_modules/
+
+# macOS
+.DS_Store
