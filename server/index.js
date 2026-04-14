@@ -14,7 +14,9 @@ const invitesRoutes = require('./routes/invites');
 const app = express();
 
 // ── Middleware ──────────────────────────────────────────────────────────────
-app.use(cors());
+app.use(cors({
+  origin: process.env.APP_URL || '*',
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

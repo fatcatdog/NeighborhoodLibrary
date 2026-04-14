@@ -2,13 +2,20 @@ const { createClient } = require('@libsql/client');
 const path = require('path');
 const fs   = require('fs');
 
-const DATA_DIR = path.join(__dirname, '../data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-// file: URL tells libSQL to use a local SQLite file — no server needed.
-const client = createClient({
-  url: `file:${path.join(DATA_DIR, 'bookmoonboard.db')}`,
-});
+// In production use Turso (hosted libSQL). Locally fall back to a SQLite file.
+let client;
+if (process.env.TURSO_URL) {
+  client = createClient({
+    url:       process.env.TURSO_URL,
+    authToken: process.env.TURSO_AUTH_TOKEN,
+  });
+} else {
+  const DATA_DIR = path.join(__dirname, '../data');
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  client = createClient({
+    url: `file:${path.join(DATA_DIR, 'bookmoonboard.db')}`,
+  });
+}
 
 // ── Schema ──────────────────────────────────────────────────────────────────
 // executeMultiple runs several DDL statements without wrapping them in a
